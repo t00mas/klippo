@@ -216,7 +216,7 @@
     const json = JSON.stringify(out, null, 2);
     navigator.clipboard
       .writeText(json)
-      .then(() => alert(`klippo: copied ${json.length} chars (${out.source})`));
+      .then(() => alert(`klippo v2: copied ${json.length} chars (${out.source})`));
   } catch (e) {
     alert('klippo err: ' + e.message);
   }
