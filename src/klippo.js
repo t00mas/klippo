@@ -124,7 +124,16 @@
     extract() {
       const p = findProduct();
       const specs = {};
-      document.querySelectorAll('.ux-labels-values').forEach((row) => {
+      // .ux-labels-values is reused for shipping/returns/payments too, so
+      // prefer the item-specifics section; fall back to all rows but drop
+      // wall-of-text values (shipping/returns blurbs run to hundreds of chars).
+      const feat = document.querySelectorAll(
+        '.ux-layout-section-evo--features .ux-labels-values',
+      );
+      const rows = feat.length
+        ? feat
+        : document.querySelectorAll('.ux-labels-values');
+      rows.forEach((row) => {
         const k = row
           .querySelector('.ux-labels-values__labels')
           ?.textContent?.trim()
@@ -132,7 +141,7 @@
         const v = row
           .querySelector('.ux-labels-values__values')
           ?.textContent?.trim();
-        if (k && v) specs[k] = v;
+        if (k && v && v.length <= 120) specs[k] = v;
       });
       const q = (s) =>
         document.querySelector(s)?.textContent?.trim().replace(/\s+/g, ' ');
