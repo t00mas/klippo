@@ -124,9 +124,12 @@
     extract() {
       const p = findProduct();
       const specs = {};
-      // .ux-labels-values is reused for shipping/returns/payments too, so
-      // prefer the item-specifics section; fall back to all rows but drop
-      // wall-of-text values (shipping/returns blurbs run to hundreds of chars).
+      // .ux-labels-values is reused by the shipping/returns/payments/condition
+      // modules, so prefer the item-specifics section; fall back to all rows
+      // but blocklist those module labels (es + en) and drop wall-of-text
+      // values (shipping blurbs run to hundreds of chars).
+      const skip =
+        /^(env[íi]o|shipping|tarifas de importaci[óo]n|import charges|entrega|delivery|devoluciones|returns|pagos|payments|estado|condition|ubicaci[óo]n|located in)$/i;
       const feat = document.querySelectorAll(
         '.ux-layout-section-evo--features .ux-labels-values',
       );
@@ -141,7 +144,7 @@
         const v = row
           .querySelector('.ux-labels-values__values')
           ?.textContent?.trim();
-        if (k && v && v.length <= 120) specs[k] = v;
+        if (k && v && v.length <= 120 && !skip.test(k)) specs[k] = v;
       });
       const q = (s) =>
         document.querySelector(s)?.textContent?.trim().replace(/\s+/g, ' ');
@@ -216,7 +219,7 @@
     const json = JSON.stringify(out, null, 2);
     navigator.clipboard
       .writeText(json)
-      .then(() => alert(`klippo v2: copied ${json.length} chars (${out.source})`));
+      .then(() => alert(`klippo v3: copied ${json.length} chars (${out.source})`));
   } catch (e) {
     alert('klippo err: ' + e.message);
   }
