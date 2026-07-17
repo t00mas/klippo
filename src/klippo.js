@@ -115,6 +115,46 @@
     },
   };
 
+  // eBay: JSON-LD covers title/price/condition/brand, but the item
+  // description lives in a cross-origin iframe (ebaydesc.com) a bookmarklet
+  // can't read. So we add the item-specifics table (same-origin, structured)
+  // and expose the description iframe URL for an agent to fetch separately.
+  const ebay = {
+    match: (h) => h.includes('ebay.'),
+    extract() {
+      const p = findProduct();
+      const specs = {};
+      document.querySelectorAll('.ux-labels-values').forEach((row) => {
+        const k = row
+          .querySelector('.ux-labels-values__labels')
+          ?.textContent?.trim()
+          .replace(/:$/, '');
+        const v = row
+          .querySelector('.ux-labels-values__values')
+          ?.textContent?.trim();
+        if (k && v) specs[k] = v;
+      });
+      const q = (s) =>
+        document.querySelector(s)?.textContent?.trim().replace(/\s+/g, ' ');
+      const title = p?.name || q('h1 .ux-textspans--BOLD') || q('h1');
+      if (!title) return null;
+      const descUrl = document.querySelector(
+        'iframe[id*="desc"],iframe[src*="ebaydesc"]',
+      )?.src;
+      return {
+        title,
+        price: p ? price(p.offers?.price, p.offers?.priceCurrency) : q('.x-price-primary'),
+        condition:
+          condition(p?.offers?.itemCondition) || specs['Estado'] || specs['Condition'],
+        brand: p?.brand?.name || p?.brand || specs['Marca'] || specs['Brand'],
+        specs: Object.keys(specs).length ? specs : undefined,
+        descUrl,
+        url: p?.offers?.url || location.href.split('?')[0],
+        source: 'ebay',
+      };
+    },
+  };
+
   // Works for Vinted and most schema.org e-commerce (eBay, many shops).
   const jsonLdProduct = {
     match: () => true,
@@ -148,7 +188,7 @@
     },
   };
 
-  const ADAPTERS = [wallapop, amazon, jsonLdProduct, ogMeta];
+  const ADAPTERS = [wallapop, amazon, ebay, jsonLdProduct, ogMeta];
 
   // --- run -----------------------------------------------------------------
 

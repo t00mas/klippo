@@ -48,10 +48,16 @@ Runs in your logged-in session, so it sees pages a headless crawler can't.
 | ---------- | ----------------------------- | -------------------------------------------------- |
 | Wallapop   | `__NEXT_DATA__` app state     | title, price, condition, brand, desc, location, views, favorites, shipping, full seller stats |
 | Amazon     | DOM scrape                    | title, price, brand, rating, reviews, availability, features, ASIN, clean `/dp/ASIN` URL |
+| eBay       | JSON-LD + item-specifics DOM  | title, price, condition, brand, item specifics, description iframe URL* |
 | Vinted     | JSON-LD                       | title, price, condition, brand, desc               |
 | Most shops | JSON-LD / OpenGraph fallback  | whatever the page exposes (thin but universal)     |
 
 The `source` field in the output tells you which path produced the data.
+
+\* eBay serves its item description from a cross-origin iframe
+(`ebaydesc.com`), which a bookmarklet cannot read. klippo emits the iframe's
+`descUrl` instead so you (or an agent) can fetch it separately; the
+item-specifics table usually covers the same ground more cleanly.
 
 ## How it works
 
