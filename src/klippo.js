@@ -94,8 +94,8 @@
         location.pathname.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/)?.[1] ||
         q('#ASIN')?.value;
       const brand = (txt('#bylineInfo') || '')
-        .replace(/^(Marca:|Brand:|Visita la Store de|Visit the)\s*/i, '')
-        .replace(/\s+Store$/i, '');
+        .replace(/^(Marca:|Brand:|Visita la (?:tienda|Store) de|Visit the)\s*/i, '')
+        .replace(/\s+(?:Store|tienda)$/i, '');
       const features = [...document.querySelectorAll('#feature-bullets li')]
         .map((li) => li.textContent.trim())
         .filter(Boolean);
@@ -105,7 +105,7 @@
           ?.textContent?.trim(),
         brand: brand || undefined,
         rating: q('#acrPopover')?.title?.trim(),
-        reviews: txt('#acrCustomerReviewText'),
+        reviews: txt('#acrCustomerReviewText')?.replace(/[()]/g, ''),
         availability: txt('#availability'),
         features: features.length ? features : undefined,
         asin,
