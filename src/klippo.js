@@ -82,6 +82,39 @@
     },
   };
 
+  // Amazon ships no product JSON-LD; read the DOM instead.
+  const amazon = {
+    match: (h) => h.includes('amazon.'),
+    extract() {
+      const q = (s) => document.querySelector(s);
+      const txt = (s) => q(s)?.textContent?.trim().replace(/\s+/g, ' ');
+      const title = txt('#productTitle');
+      if (!title) return null;
+      const asin =
+        location.pathname.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/)?.[1] ||
+        q('#ASIN')?.value;
+      const brand = (txt('#bylineInfo') || '')
+        .replace(/^(Marca:|Brand:|Visita la Store de|Visit the)\s*/i, '')
+        .replace(/\s+Store$/i, '');
+      const features = [...document.querySelectorAll('#feature-bullets li')]
+        .map((li) => li.textContent.trim())
+        .filter(Boolean);
+      return {
+        title,
+        price: q('#corePrice_feature_div .a-offscreen, .a-price .a-offscreen')
+          ?.textContent?.trim(),
+        brand: brand || undefined,
+        rating: q('#acrPopover')?.title?.trim(),
+        reviews: txt('#acrCustomerReviewText'),
+        availability: txt('#availability'),
+        features: features.length ? features : undefined,
+        asin,
+        url: asin ? `${location.origin}/dp/${asin}` : location.href.split('?')[0],
+        source: 'amazon',
+      };
+    },
+  };
+
   // Works for Vinted and most schema.org e-commerce (eBay, many shops).
   const jsonLdProduct = {
     match: () => true,
@@ -115,7 +148,7 @@
     },
   };
 
-  const ADAPTERS = [wallapop, jsonLdProduct, ogMeta];
+  const ADAPTERS = [wallapop, amazon, jsonLdProduct, ogMeta];
 
   // --- run -----------------------------------------------------------------
 
