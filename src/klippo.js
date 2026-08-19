@@ -12,7 +12,7 @@
 // before the generic fallback. `extract` returns an object or null (null =
 // "I don't apply here, try the next adapter").
 
-(() => {
+(async () => {
   // --- helpers -------------------------------------------------------------
 
   // Meta tag content by property or name (OpenGraph / product meta).
@@ -167,6 +167,88 @@
     },
   };
 
+  // Vinted catalog (search/browse grid). The cards are client-rendered and
+  // carry no per-item structured data, so ask Vinted's own JSON API with the
+  // current filters. Same-origin fetch => the session cookie rides along and
+  // we get exactly the list the page is showing.
+  const vintedCatalog = {
+    match: (h) => h.includes('vinted.'),
+    async extract() {
+      if (!/^\/catalog/.test(location.pathname)) return null;
+
+      // Filters live in the query string (`catalog[]=2994&order=newest_first`);
+      // the catalog id can also be baked into the path (/catalog/2994-slug).
+      const qs = new URLSearchParams(location.search);
+      const api = new URLSearchParams();
+      const ids = [
+        ...qs.getAll('catalog[]'),
+        ...(location.pathname.match(/\/catalog\/(\d+)/)?.slice(1) || []),
+      ];
+      if (ids.length) api.set('catalog_ids', [...new Set(ids)].join(','));
+      // Pass the rest through: brand_ids[], status_ids[], price_to,
+      // search_text... The API takes the same names without the `[]`.
+      for (const [k, v] of qs) {
+        if (k === 'catalog[]') continue;
+        api.append(k.replace(/\[\]$/, ''), v);
+      }
+      api.set('order', qs.get('order') || 'newest_first');
+      api.set('per_page', qs.get('per_page') || '48');
+      api.set('page', qs.get('page') || '1');
+
+      const res = await fetch(`/api/v2/catalog/items?${api}`, {
+        headers: { accept: 'application/json' },
+        credentials: 'same-origin',
+      });
+      if (!res.ok) return null;
+      const items = (await res.json()).items || [];
+      if (!items.length) return null;
+
+      return {
+        query: Object.fromEntries(api),
+        count: items.length,
+        items: items.map((i) => ({
+          title: i.title,
+          // price = asking price; total = what the buyer pays incl. fees.
+          price: price(i.price?.amount, i.price?.currency_code),
+          total: price(i.total_item_price?.amount, i.total_item_price?.currency_code),
+          brand: i.brand_title || undefined,
+          size: i.size_title || undefined,
+          condition: i.status || undefined,
+          favorites: i.favourite_count,
+          views: i.view_count,
+          seller: i.user?.login,
+          url: i.url || `${location.origin}/items/${i.id}`,
+        })),
+        url: location.href,
+        source: 'vinted-catalog',
+      };
+    },
+  };
+
+  // Fallback for the same grid if the API call fails or its shape moves:
+  // every card is an anchor to /items/<id> whose title attribute holds the
+  // full descriptor ("Brand, size, condition, price"). Thin but stable.
+  const vintedCatalogDom = {
+    match: (h) => h.includes('vinted.'),
+    extract() {
+      if (!/^\/catalog/.test(location.pathname)) return null;
+      const seen = new Set();
+      const items = [];
+      for (const a of document.querySelectorAll('a[href*="/items/"]')) {
+        const id = a.getAttribute('href').match(/\/items\/(\d+)/)?.[1];
+        const desc = a.title || a.getAttribute('aria-label');
+        if (!id || !desc || seen.has(id)) continue;
+        seen.add(id);
+        items.push({
+          desc: desc.replace(/\s+/g, ' ').trim(),
+          url: `${location.origin}/items/${id}`,
+        });
+      }
+      if (!items.length) return null;
+      return { count: items.length, items, url: location.href, source: 'vinted-catalog-dom' };
+    },
+  };
+
   // Works for Vinted and most schema.org e-commerce (eBay, many shops).
   const jsonLdProduct = {
     match: () => true,
@@ -200,7 +282,15 @@
     },
   };
 
-  const ADAPTERS = [wallapop, amazon, ebay, jsonLdProduct, ogMeta];
+  const ADAPTERS = [
+    wallapop,
+    amazon,
+    ebay,
+    vintedCatalog,
+    vintedCatalogDom,
+    jsonLdProduct,
+    ogMeta,
+  ];
 
   // --- run -----------------------------------------------------------------
 
@@ -209,7 +299,13 @@
     let out = null;
     for (const a of ADAPTERS) {
       if (!a.match(host)) continue;
-      out = a.extract();
+      // An adapter may be async (network); an adapter that throws just means
+      // "not my page", so fall through to the next one.
+      try {
+        out = await a.extract();
+      } catch {
+        out = null;
+      }
       if (out) break;
     }
     if (!out) {
@@ -217,9 +313,25 @@
       return;
     }
     const json = JSON.stringify(out, null, 2);
-    navigator.clipboard
-      .writeText(json)
-      .then(() => alert(`klippo v3: copied ${json.length} chars (${out.source})`));
+    const tag = `${out.source}${out.count ? `, ${out.count} items` : ''}`;
+    try {
+      await navigator.clipboard.writeText(json);
+      alert(`klippo v4: copied ${json.length} chars (${tag})`);
+    } catch {
+      // An async adapter spends the click's user activation, which Firefox
+      // needs for clipboard writes. Fall back to a selected textarea so the
+      // user can copy with one keystroke.
+      const t = document.createElement('textarea');
+      t.value = json;
+      t.style.cssText =
+        'position:fixed;inset:5%;z-index:2147483647;width:90%;height:90%';
+      t.addEventListener('copy', () => t.remove());
+      document.body.append(t);
+      alert(`klippo v4: press cmd/ctrl+C to copy ${json.length} chars (${tag})`);
+      // Select after the alert: dismissing it takes the focus away.
+      t.focus();
+      t.select();
+    }
   } catch (e) {
     alert('klippo err: ' + e.message);
   }
