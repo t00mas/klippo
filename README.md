@@ -75,6 +75,10 @@ closest thing the endpoint has to a creation date) with `promoted`: an advert
 ignores the newest-first order, so it looks fresher than it is. `business`
 marks a reseller who prices at retail.
 
+`age` also exposes a bump. A seller can push an old listing back to the top of
+the newest-first order, but the photo keeps its original upload time. A card
+that sits among 10-minute items with an age of `1d` is a relist, not a find.
+
 `per_page` defaults to 48; add `&per_page=96` to the page URL to grab more. The
 call runs in your session, so it needs no token. If it fails, klippo falls back
 to scraping the grid anchors (`source: vinted-catalog-dom`, description string
