@@ -214,8 +214,9 @@
           brand: i.brand_title || undefined,
           size: i.size_title || undefined,
           condition: i.status || undefined,
-          favorites: i.favourite_count,
-          views: i.view_count,
+          // The catalog endpoint sends no view count, and most cards have no
+          // favourites yet. Keep the number only when it carries a signal.
+          favorites: i.favourite_count || undefined,
           seller: i.user?.login,
           url: i.url || `${location.origin}/items/${i.id}`,
         })),
