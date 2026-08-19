@@ -217,7 +217,14 @@
           // The catalog endpoint sends no view count, and most cards have no
           // favourites yet. Keep the number only when it carries a signal.
           favorites: i.favourite_count || undefined,
+          photos: i.photos?.length || undefined,
+          // A promoted card is an advert. The newest-first order does not
+          // apply to it, so it is not the fresh find it looks like.
+          promoted: i.promoted || undefined,
           seller: i.user?.login,
+          // A business seller is a reseller at retail price. A private seller
+          // is the one who undervalues the item.
+          business: i.user?.business || undefined,
           url: i.url || `${location.origin}/items/${i.id}`,
         })),
         url: location.href,
