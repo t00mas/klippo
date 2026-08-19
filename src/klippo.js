@@ -39,6 +39,16 @@
   const condition = (c) =>
     (c || '').split('/').pop().replace(/Condition$/, '') || undefined;
 
+  // Epoch seconds -> "7m" / "3h" / "2d". Coarse on purpose: it answers "did I
+  // get here first?", which is all a hunt needs.
+  const ago = (t) => {
+    if (!t) return undefined;
+    const s = Math.max(0, Math.floor(Date.now() / 1000) - t);
+    if (s < 3600) return `${Math.floor(s / 60)}m`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h`;
+    return `${Math.floor(s / 86400)}d`;
+  };
+
   const price = (amount, currency) =>
     amount != null ? `${amount} ${currency || ''}`.trim() : undefined;
 
@@ -217,7 +227,11 @@
           // The catalog endpoint sends no view count, and most cards have no
           // favourites yet. Keep the number only when it carries a signal.
           favorites: i.favourite_count || undefined,
+          // The endpoint sends no creation date. The main photo upload time is
+          // the closest thing to it, and it is minutes off at most.
+          age: ago(i.photo?.high_resolution?.timestamp),
           photos: i.photos?.length || undefined,
+          suspicious: i.photo?.is_suspicious || undefined,
           // A promoted card is an advert. The newest-first order does not
           // apply to it, so it is not the fresh find it looks like.
           promoted: i.promoted || undefined,

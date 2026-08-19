@@ -50,7 +50,7 @@ Runs in your logged-in session, so it sees pages a headless crawler can't.
 | Amazon     | DOM scrape                    | title, price, brand, rating, reviews, availability, features, ASIN, clean `/dp/ASIN` URL |
 | eBay       | JSON-LD + item-specifics DOM  | title, price, condition, brand, item specifics, description iframe URL* |
 | Vinted (listing) | JSON-LD                 | title, price, condition, brand, desc               |
-| Vinted (catalog) | Vinted JSON API†        | one entry per grid card: title, price, total price with fees, brand, size, condition, favorites, views, seller, item URL |
+| Vinted (catalog) | Vinted JSON API†        | one entry per grid card: title, price, total price with fees, brand, size, condition, listing age, photo count, favorites, seller, business-seller and promoted flags, item URL |
 | Most shops | JSON-LD / OpenGraph fallback  | whatever the page exposes (thin but universal)     |
 
 The `source` field in the output tells you which path produced the data.
@@ -68,6 +68,12 @@ https://www.vinted.es/catalog?catalog[]=3564&order=newest_first
 Both URL shapes work (`3564` is Computers & accessories). klippo reads the
 catalog id from the path or from `catalog[]`, and forwards every other filter
 in the URL (`brand_ids[]`, `status_ids[]`, `price_to`, `search_text`, ...).
+
+A field appears only when it carries a signal, so an empty count or a false
+flag costs you no tokens. Read `age` (time since the main photo went up, the
+closest thing the endpoint has to a creation date) with `promoted`: an advert
+ignores the newest-first order, so it looks fresher than it is. `business`
+marks a reseller who prices at retail.
 
 `per_page` defaults to 48; add `&per_page=96` to the page URL to grab more. The
 call runs in your session, so it needs no token. If it fails, klippo falls back
